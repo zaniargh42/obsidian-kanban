@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Obsidian Kanban Board</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    :root {
+      --bg-color: #1e1e1e;
+      --text-color: #dcddde;
+      --column-bg: #2a2a2a;
+      --card-bg: #3e3e3e;
+      --card-text: #fff;
+      --card-desc: #b3b3b3;
+      --form-bg: #383838;
+      --input-bg: #202020;
+      --input-border: #484848;
+      --quote-bg: #2a2a2a;
+      --quote-border: #f39c12;
+    }
+
+    .light-mode {
+      --bg-color: #f0f2f5;
+      --text-color: #1c1e21;
+      --column-bg: #e4e6eb;
+      --card-bg: #ffffff;
+      --card-text: #050505;
+      --card-desc: #65676b;
+      --form-bg: #d8dadf;
+      --input-bg: #ffffff;
+      --input-border: #ced0d5;
+      --quote-bg: #ffffff;
+      --quote-border: #f39c12;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: var(--text-color);
+      margin: 20px;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    .kanban-board {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      justify-content: center;
+      overflow-x: auto;
+      padding-bottom: 10px;
+    }
+
+    .kanban-column {
+      background-color: var(--column-bg);
+      min-width: 280px;
+      width: 300px;
+      border-radius: 6px;
+      padding: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      transition: background-color 0.2s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .kanban-column.drag-over {
+      background-color: #333333;
+    }
+
+    .column-header {
+      font-weight: 600;
+      padding: 8px 12px;
+      margin-bottom: 15px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      font-size: 0.8rem;
+      letter-spacing: 0.5px;
+    }
+
+    .todo { background-color: #e74c3c; color: white; }
+    .progress { background-color: #f39c12; color: white; }
+    .done { background-color: #2ecc71; color: white; }
+    .backlog { background-color: #3498db; color: white; }
+
+    #quote-container {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 20px;
+      background-color: var(--quote-bg);
+      border-radius: 8px;
+      border-left: 5px solid var(--quote-border);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    #quote-text {
+      font-style: italic;
+      font-size: 1.2rem;
+      color: var(--card-text);
+      margin: 0;
+    }
+
+    #quote-author {
+      display: block;
+      margin-top: 10px;
+      font-size: 0.9rem;
+      color: var(--card-desc);
+    }
+
+    .kanban-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 50px;
+    }
+
+    .kanban-card {
+      background-color: var(--card-bg);
+      padding: 12px;
+      border-radius: 4px;
+      border-left: 4px solid #757575;
+      cursor: grab;
+      transition: transform 0.1s ease, background-color 0.1s ease, opacity 0.1s ease;
+      color: var(--card-text);
+    }
+
+    .kanban-card:active { cursor: grabbing; }
+    .kanban-card.dragging { opacity: 0.4; }
+
+    .kanban-card h3 {
+      margin: 0 0 8px 0;
+      font-size: 0.95rem;
+      color: var(--card-text);
+      pointer-events: none;
+    }
+
+    .kanban-card p {
+      margin: 0;
+      font-size: 0.85rem;
+      color: var(--card-desc);
+      line-height: 1.4;
+      pointer-events: none;
+    }
+
+    /* Add Card Controls */
+    .add-card-btn {
+      background: none;
+      border: none;
+      color: #909090;
+      text-align: left;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .add-card-btn:hover {
+      background-color: var(--form-bg);
+      color: var(--card-text);
+    }
+
+    .add-card-form {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+      background-color: var(--form-bg);
+      padding: 10px;
+      border-radius: 4px;
+    }
+
+    .add-card-form input, .add-card-form textarea {
+      background-color: var(--input-bg);
+      border: 1px solid var(--input-border);
+      color: var(--card-text);
+      padding: 8px;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.85rem;
+    }
+
+    .add-card-form textarea { resize: vertical; height: 50px; }
+
+    .form-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .save-btn {
+      background-color: #2ecc71;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .cancel-btn {
+      background: none;
+      border: none;
+      color: #b3b3b3;
+      cursor: pointer;
+    }
+
+    .theme-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 10px 15px;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      font-family: inherit;
+      background-color: var(--column-bg);
+      color: var(--text-color);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+
+    .color-picker {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+      justify-content: center;
+    }
+
+    .color-option {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.2s ease;
+    }
+
+    .color-option.selected {
+      border-color: #fff;
+      transform: scale(1.2);
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 5px;
+      margin-top: 12px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .action-btn {
+      background: rgba(0,0,0,0.2);
+      border: none;
+      color: #b3b3b3;
+      font-size: 0.7rem;
+      padding: 4px 8px;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .action-btn:hover {
+      background: rgba(0,0,0,0.4);
+      color: #fff;
+    }
+
+    .action-btn.delete { color: #ff6b6b; }
+    .action-btn.delete:hover { background: #ff6b6b; color: #fff; }
+
+    .card-markdown {
+      font-size: 0.85rem;
+      color: var(--card-desc);
+      line-height: 1.4;
+    }
+
+    .card-markdown ul, .card-markdown ol {
+      padding-left: 20px;
+      margin: 5px 0;
+    }
+
+    .card-markdown p {
+      margin: 0 0 5px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <button id="theme-toggle" class="theme-toggle" onclick="toggleTheme()">🌙 Dark Mode</button>
+
+  <div id="quote-container">
+    <p id="quote-text">Loading inspiration...</p>
+    <span id="quote-author"></span>
+  </div>
+
+  <div class="kanban-board">
+    <div class="kanban-column">
+      <div class="column-header backlog">Backlog</div>
+      <div class="kanban-cards"></div>
+      <button class="add-card-btn" onclick="showForm(this)">＋ Add Card</button>
+      <div class="add-card-form">
+        <input type="text" placeholder="Card Title..." class="card-title-input">
+        <textarea placeholder="Description..." class="card-desc-input"></textarea>
+        <div class="color-picker">
+          <div class="color-option selected" style="background-color: #757575" onclick="selectColor(this, '#757575')"></div>
+          <div class="color-option" style="background-color: #e74c3c" onclick="selectColor(this, '#e74c3c')"></div>
+          <div class="color-option" style="background-color: #3498db" onclick="selectColor(this, '#3498db')"></div>
+          <div class="color-option" style="background-color: #2ecc71" onclick="selectColor(this, '#2ecc71')"></div>
+          <div class="color-option" style="background-color: #f1c40f" onclick="selectColor(this, '#f1c40f')"></div>
+          <div class="color-option" style="background-color: #9b59b6" onclick="selectColor(this, '#9b59b6')"></div>
+        </div>
+        <div class="form-actions">
+          <button class="save-btn" onclick="addCard(this)">Add</button>
+          <button class="cancel-btn" onclick="hideForm(this)">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="kanban-column">
+      <div class="column-header todo">To Do</div>
+      <div class="kanban-cards"></div>
+      <button class="add-card-btn" onclick="showForm(this)">＋ Add Card</button>
+      <div class="add-card-form">
+        <input type="text" placeholder="Card Title..." class="card-title-input">
+        <textarea placeholder="Description..." class="card-desc-input"></textarea>
+        <div class="color-picker">
+          <div class="color-option selected" style="background-color: #757575" onclick="selectColor(this, '#757575')"></div>
+          <div class="color-option" style="background-color: #e74c3c" onclick="selectColor(this, '#e74c3c')"></div>
+          <div class="color-option" style="background-color: #3498db" onclick="selectColor(this, '#3498db')"></div>
+          <div class="color-option" style="background-color: #2ecc71" onclick="selectColor(this, '#2ecc71')"></div>
+          <div class="color-option" style="background-color: #f1c40f" onclick="selectColor(this, '#f1c40f')"></div>
+          <div class="color-option" style="background-color: #9b59b6" onclick="selectColor(this, '#9b59b6')"></div>
+        </div>
+        <div class="form-actions">
+          <button class="save-btn" onclick="addCard(this)">Add</button>
+          <button class="cancel-btn" onclick="hideForm(this)">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="kanban-column">
+      <div class="column-header progress">In Progress</div>
+      <div class="kanban-cards"></div>
+      <button class="add-card-btn" onclick="showForm(this)">＋ Add Card</button>
+      <div class="add-card-form">
+        <input type="text" placeholder="Card Title..." class="card-title-input">
+        <textarea placeholder="Description..." class="card-desc-input"></textarea>
+        <div class="color-picker">
+          <div class="color-option selected" style="background-color: #757575" onclick="selectColor(this, '#757575')"></div>
+          <div class="color-option" style="background-color: #e74c3c" onclick="selectColor(this, '#e74c3c')"></div>
+          <div class="color-option" style="background-color: #3498db" onclick="selectColor(this, '#3498db')"></div>
+          <div class="color-option" style="background-color: #2ecc71" onclick="selectColor(this, '#2ecc71')"></div>
+          <div class="color-option" style="background-color: #f1c40f" onclick="selectColor(this, '#f1c40f')"></div>
+          <div class="color-option" style="background-color: #9b59b6" onclick="selectColor(this, '#9b59b6')"></div>
+        </div>
+        <div class="form-actions">
+          <button class="save-btn" onclick="addCard(this)">Add</button>
+          <button class="cancel-btn" onclick="hideForm(this)">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="kanban-column">
+      <div class="column-header done">Done</div>
+      <div class="kanban-cards"></div>
+      <button class="add-card-btn" onclick="showForm(this)">＋ Add Card</button>
+      <div class="add-card-form">
+        <input type="text" placeholder="Card Title..." class="card-title-input">
+        <textarea placeholder="Description..." class="card-desc-input"></textarea>
+        <div class="color-picker">
+          <div class="color-option selected" style="background-color: #757575" onclick="selectColor(this, '#757575')"></div>
+          <div class="color-option" style="background-color: #e74c3c" onclick="selectColor(this, '#e74c3c')"></div>
+          <div class="color-option" style="background-color: #3498db" onclick="selectColor(this, '#3498db')"></div>
+          <div class="color-option" style="background-color: #2ecc71" onclick="selectColor(this, '#2ecc71')"></div>
+          <div class="color-option" style="background-color: #f1c40f" onclick="selectColor(this, '#f1c40f')"></div>
+          <div class="color-option" style="background-color: #9b59b6" onclick="selectColor(this, '#9b59b6')"></div>
+        </div>
+        <div class="form-actions">
+          <button class="save-btn" onclick="addCard(this)">Add</button>
+          <button class="cancel-btn" onclick="hideForm(this)">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function loadQuote() {
+      try {
+        const response = await fetch('/api/quote');
+        const data = await response.json();
+        document.getElementById('quote-text').textContent = `"${data.text}"`;
+      } catch (err) {
+        console.error('Error loading quote:', err);
+        document.getElementById('quote-text').textContent = "Keep pushing forward!";
+      }
+    }
+
+    function toggleTheme() {
+      const body = document.body;
+      const btn = document.getElementById('theme-toggle');
+
+      body.classList.toggle('light-mode');
+
+      if (body.classList.contains('light-mode')) {
+        btn.textContent = '☀️ Light Mode';
+        localStorage.setItem('theme', 'light');
+      } else {
+        btn.textContent = '🌙 Dark Mode';
+        localStorage.setItem('theme', 'dark');
+      }
+    }
+
+    // Load cards from server
+    async function loadCards() {
+      try {
+        const response = await fetch('/api/cards');
+        const cards = await response.json();
+
+        cards.forEach(card => {
+          renderCard(card);
+        });
+      } catch (err) {
+        console.error('Error loading cards:', err);
+      }
+    }
+
+    function renderCard(card) {
+      // Find column by matching the header class
+      const columns = document.querySelectorAll('.kanban-column');
+      let targetColumn = null;
+
+      columns.forEach(col => {
+        const header = col.querySelector('.column-header');
+        if (header && header.classList.contains(card.column)) {
+          targetColumn = col;
+        }
+      });
+
+      if (!targetColumn) return;
+
+      const cardsContainer = targetColumn.querySelector('.kanban-cards');
+      const newCard = document.createElement('div');
+      newCard.className = 'kanban-card';
+      newCard.setAttribute('draggable', 'true');
+      newCard.setAttribute('data-id', card.id);
+      newCard.setAttribute('data-title', card.title);
+      newCard.setAttribute('data-description', card.description || '');
+      newCard.setAttribute('data-color', card.color || '#757575');
+      newCard.style.borderLeftColor = card.color || '#757575';
+
+      newCard.innerHTML = `
+        <h3>${card.title}</h3>
+        <div class="card-markdown">${marked.parse(card.description || '')}</div>
+        <div class="card-actions">
+          <button class="action-btn" onclick="event.stopPropagation(); archiveCard(${card.id}, this)">Archive</button>
+          <button class="action-btn" onclick="event.stopPropagation(); editCard(${card.id}, this)">Edit</button>
+        </div>
+      `;
+
+      newCard.addEventListener('dragstart', () => newCard.classList.add('dragging'));
+      newCard.addEventListener('dragend', () => newCard.classList.remove('dragging'));
+
+      cardsContainer.appendChild(newCard);
+    }
+
+    let selectedColor = '#757575';
+
+    function selectColor(el, color) {
+      document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('selected'));
+      el.classList.add('selected');
+      selectedColor = color;
+    }
+
+    async function archiveCard(id, btn) {
+      if (!confirm('Archive this card?')) return;
+      try {
+        const response = await fetch(`/api/cards/${id}/archive`, { method: 'PATCH' });
+        if (response.ok) {
+          btn.closest('.kanban-card').remove();
+        } else {
+          alert('Failed to archive card.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Server error.');
+      }
+    }
+
+    function editCard(id, btn) {
+      const cardEl = btn.closest('.kanban-card');
+      const title = cardEl.getAttribute('data-title');
+      const desc = cardEl.getAttribute('data-description');
+      const color = cardEl.getAttribute('data-color');
+
+      cardEl.innerHTML = `
+        <div class="add-card-form" style="display: flex; margin-top: 0; padding: 0;">
+          <input type="text" value="${title}" class="edit-title-input">
+          <textarea class="edit-desc-input">${desc}</textarea>
+          <div class="color-picker">
+            <div class="color-option ${color === '#757575' ? 'selected' : ''}" style="background-color: #757575" onclick="selectEditColor(this, '#757575', ${id})"></div>
+            <div class="color-option ${color === '#e74c3c' ? 'selected' : ''}" style="background-color: #e74c3c" onclick="selectEditColor(this, '#e74c3c', ${id})"></div>
+            <div class="color-option ${color === '#3498db' ? 'selected' : ''}" style="background-color: #3498db" onclick="selectEditColor(this, '#3498db', ${id})"></div>
+            <div class="color-option ${color === '#2ecc71' ? 'selected' : ''}" style="background-color: #2ecc71" onclick="selectEditColor(this, '#2ecc71', ${id})"></div>
+            <div class="color-option ${color === '#f1c40f' ? 'selected' : ''}" style="background-color: #f1c40f" onclick="selectEditColor(this, '#f1c40f', ${id})"></div>
+            <div class="color-option ${color === '#9b59b6' ? 'selected' : ''}" style="background-color: #9b59b6" onclick="selectEditColor(this, '#9b59b6', ${id})"></div>
+          </div>
+          <div class="form-actions">
+            <button class="save-btn" onclick="saveEdit(${id}, this)">Save</button>
+            <button class="cancel-btn" onclick="cancelEdit(${id}, this)">Cancel</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function selectEditColor(el, color, id) {
+      el.closest('.color-picker').querySelectorAll('.color-option').forEach(opt => opt.classList.remove('selected'));
+      el.classList.add('selected');
+      el.closest('.kanban-card').setAttribute('data-color', color);
+    }
+
+    async function saveEdit(id, btn) {
+      const cardEl = btn.closest('.kanban-card');
+      const title = cardEl.querySelector('.edit-title-input').value.trim();
+      const desc = cardEl.querySelector('.edit-desc-input').value.trim();
+      const color = cardEl.getAttribute('data-color');
+      const column = cardEl.closest('.kanban-column').querySelector('.column-header').classList[1];
+
+      if (!title) return alert("Please enter a title.");
+
+      try {
+        const response = await fetch(`/api/cards/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, description: desc, color, column })
+        });
+
+        if (response.ok) {
+          // Update the data attributes and re-render
+          cardEl.setAttribute('data-title', title);
+          cardEl.setAttribute('data-description', desc);
+          cardEl.setAttribute('data-color', color);
+          cardEl.style.borderLeftColor = color;
+
+          // Instead of calling renderCard which appends a new element,
+          // we'll just manually update the HTML to return to view mode.
+          cardEl.innerHTML = `
+            <h3>${title}</h3>
+            <div class="card-markdown">${marked.parse(desc || '')}</div>
+            <div class="card-actions">
+              <button class="action-btn" onclick="event.stopPropagation(); archiveCard(${id}, this)">Archive</button>
+              <button class="action-btn" onclick="event.stopPropagation(); editCard(${id}, this)">Edit</button>
+            </div>
+          `;
+        } else {
+          alert('Failed to save changes.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Server error.');
+      }
+    }
+
+    function cancelEdit(id, btn) {
+      const cardEl = btn.closest('.kanban-card');
+      const title = cardEl.getAttribute('data-title');
+      const desc = cardEl.getAttribute('data-description');
+
+      cardEl.innerHTML = `
+        <h3>${title}</h3>
+        <div class="card-markdown">${marked.parse(desc || '')}</div>
+        <div class="card-actions">
+          <button class="action-btn" onclick="event.stopPropagation(); archiveCard(${id}, this)">Archive</button>
+          <button class="action-btn" onclick="event.stopPropagation(); editCard(${id}, this)">Edit</button>
+        </div>
+      `;
+    }
+
+    // Show/Hide Form Controls
+    function showForm(button) {
+      button.style.display = 'none';
+      button.nextElementSibling.style.display = 'flex';
+      button.nextElementSibling.querySelector('.card-title-input').focus();
+    }
+
+    function hideForm(button) {
+      const form = button.closest('.add-card-form');
+      const addBtn = form.previousElementSibling;
+      form.style.display = 'none';
+      addBtn.style.display = 'flex';
+      form.querySelector('.card-title-input').value = '';
+      form.querySelector('.card-desc-input').value = '';
+    }
+
+    // Add Dynamic Card Logic
+    async function addCard(button) {
+      const form = button.closest('.add-card-form');
+      const column = form.closest('.kanban-column');
+
+      // Robustly find the column status class (todo, progress, done, backlog)
+      const header = column.querySelector('.column-header');
+      const columnClass = Array.from(header.classList).find(cls => cls !== 'column-header');
+
+      const title = form.querySelector('.card-title-input').value.trim();
+      const desc = form.querySelector('.card-desc-input').value.trim();
+
+      if (!title) return alert("Please enter a title.");
+
+      try {
+        const response = await fetch('/api/cards', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title,
+            description: desc,
+            column: columnClass,
+            color: selectedColor
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          renderCard(data);
+          hideForm(button);
+        } else {
+          alert(`Error: ${data.error || 'Failed to save card'}`);
+        }
+      } catch (err) {
+        console.error('Error saving card:', err);
+        alert('Could not connect to the server. Make sure node server.js is running.');
+      }
+    }
+
+    // Column Drag and Drop Handlers
+    document.querySelectorAll('.kanban-column').forEach(column => {
+      const cardContainer = column.querySelector('.kanban-cards');
+
+      column.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        column.classList.add('drag-over');
+      });
+
+      column.addEventListener('dragleave', () => {
+        column.classList.remove('drag-over');
+      });
+
+      column.addEventListener('drop', async () => {
+        column.classList.remove('drag-over');
+        const draggingCard = document.querySelector('.dragging');
+        if (draggingCard) {
+          const cardId = draggingCard.getAttribute('data-id');
+          const columnClass = column.querySelector('.column-header').classList[1];
+
+          try {
+            const response = await fetch(`/api/cards/${cardId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ column: columnClass })
+            });
+
+            if (response.ok) {
+              cardContainer.appendChild(draggingCard);
+            } else {
+              alert('Failed to update card position.');
+            }
+          } catch (err) {
+            console.error('Error updating card:', err);
+          }
+        }
+      });
+    });
+
+    // Initial load
+    window.addEventListener('DOMContentLoaded', () => {
+      if (window.location.protocol === 'file:') {
+        alert('⚠️ Warning: You are opening the file directly. The database features (saving/loading cards) will not work. Please run "node server.js" and visit http://localhost:3000');
+      }
+
+      if (localStorage.getItem('theme') === 'light') {
+        document.body.classList.add('light-mode');
+        document.getElementById('theme-toggle').textContent = '☀️ Light Mode';
+      }
+      loadCards();
+      loadQuote();
+    });
+  </script>
+
+</body>
+</html>
