@@ -27,8 +27,8 @@ A professional, persistent Kanban board application designed for high-productivi
 ### Quick Start
 1. **Clone the repository**:
    \`\`\`bash
-   git clone https://github.com/your-username/yadegar.git
-   cd yadegar
+   git clone https://github.com/your-username/obsidian-kanban.git
+   cd obsidian-kanban
    \`\`\`
 
 2. **Install dependencies**:
