@@ -9,7 +9,10 @@
     :root {
       --bg-color: #1e1e1e;
       --text-color: #dcddde;
-      --column-bg: #2a2a2a;
+      --col-bg-1: #3a3a3a;
+      --col-bg-2: #323232;
+      --col-bg-3: #2a2a2a;
+      --col-bg-4: #222222;
       --card-bg: #3e3e3e;
       --card-text: #fff;
       --card-desc: #b3b3b3;
@@ -23,7 +26,10 @@
     .light-mode {
       --bg-color: #f0f2f5;
       --text-color: #1c1e21;
-      --column-bg: #e4e6eb;
+      --col-bg-1: #f5f5f5;
+      --col-bg-2: #e8e8e8;
+      --col-bg-3: #dcdcdc;
+      --col-bg-4: #d0d0d0;
       --card-bg: #ffffff;
       --card-text: #050505;
       --card-desc: #65676b;
@@ -52,7 +58,6 @@
     }
 
     .kanban-column {
-      background-color: var(--column-bg);
       min-width: 280px;
       width: 300px;
       border-radius: 6px;
@@ -62,6 +67,11 @@
       display: flex;
       flex-direction: column;
     }
+
+    .kanban-column:nth-child(1) { background-color: var(--col-bg-1); }
+    .kanban-column:nth-child(2) { background-color: var(--col-bg-2); }
+    .kanban-column:nth-child(3) { background-color: var(--col-bg-3); }
+    .kanban-column:nth-child(4) { background-color: var(--col-bg-4); }
 
     .kanban-column.drag-over {
       background-color: #333333;
@@ -77,10 +87,10 @@
       letter-spacing: 0.5px;
     }
 
-    .todo { background-color: #e74c3c; color: white; }
-    .progress { background-color: #f39c12; color: white; }
-    .done { background-color: #2ecc71; color: white; }
-    .backlog { background-color: #3498db; color: white; }
+    .todo { background-color: #666666; color: white; }
+    .progress { background-color: #555555; color: white; }
+    .done { background-color: #444444; color: white; }
+    .backlog { background-color: #777777; color: white; }
 
     #quote-container {
       text-align: center;
@@ -216,7 +226,7 @@
       cursor: pointer;
       font-weight: 600;
       font-family: inherit;
-      background-color: var(--column-bg);
+      background-color: var(--col-bg-3);
       color: var(--text-color);
       box-shadow: 0 2px 5px rgba(0,0,0,0.2);
       transition: all 0.3s ease;
