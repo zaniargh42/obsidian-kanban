@@ -13,6 +13,7 @@
       --col-bg-2: #323232;
       --col-bg-3: #2a2a2a;
       --col-bg-4: #222222;
+      --col-bg-5: #1a1a1a;
       --card-bg: #3e3e3e;
       --card-text: #fff;
       --card-desc: #b3b3b3;
@@ -30,6 +31,7 @@
       --col-bg-2: #e8e8e8;
       --col-bg-3: #dcdcdc;
       --col-bg-4: #d0d0d0;
+      --col-bg-5: #c3c3c3;
       --card-bg: #ffffff;
       --card-text: #050505;
       --card-desc: #65676b;
@@ -72,6 +74,7 @@
     .kanban-column:nth-child(2) { background-color: var(--col-bg-2); }
     .kanban-column:nth-child(3) { background-color: var(--col-bg-3); }
     .kanban-column:nth-child(4) { background-color: var(--col-bg-4); }
+    .kanban-column:nth-child(5) { background-color: var(--col-bg-5); }
 
     .kanban-column.drag-over {
       background-color: #333333;
@@ -91,6 +94,7 @@
     .progress { background-color: #555555; color: white; }
     .done { background-color: #444444; color: white; }
     .backlog { background-color: #777777; color: white; }
+    .daily-habits { background-color: #888888; color: white; }
 
     #quote-container {
       text-align: center;
@@ -295,6 +299,23 @@
     .card-markdown p {
       margin: 0 0 5px 0;
     }
+
+    @media (max-width: 768px) {
+      .kanban-board {
+        flex-direction: column;
+        align-items: center;
+      }
+      .kanban-column {
+        width: 90%;
+        min-width: unset;
+      }
+      .theme-toggle {
+        top: 10px;
+        right: 10px;
+        padding: 8px 12px;
+        font-size: 0.8rem;
+      }
+    }
   </style>
 </head>
 <body>
@@ -307,6 +328,28 @@
   </div>
 
   <div class="kanban-board">
+    <div class="kanban-column">
+      <div class="column-header daily-habits">Daily Habits</div>
+      <div class="kanban-cards"></div>
+      <button class="add-card-btn" onclick="showForm(this)">＋ Add Card</button>
+      <div class="add-card-form">
+        <input type="text" placeholder="Card Title..." class="card-title-input">
+        <textarea placeholder="Description..." class="card-desc-input"></textarea>
+        <div class="color-picker">
+          <div class="color-option selected" style="background-color: #757575" onclick="selectColor(this, '#757575')"></div>
+          <div class="color-option" style="background-color: #e74c3c" onclick="selectColor(this, '#e74c3c')"></div>
+          <div class="color-option" style="background-color: #3498db" onclick="selectColor(this, '#3498db')"></div>
+          <div class="color-option" style="background-color: #2ecc71" onclick="selectColor(this, '#2ecc71')"></div>
+          <div class="color-option" style="background-color: #f1c40f" onclick="selectColor(this, '#f1c40f')"></div>
+          <div class="color-option" style="background-color: #9b59b6" onclick="selectColor(this, '#9b59b6')"></div>
+        </div>
+        <div class="form-actions">
+          <button class="save-btn" onclick="addCard(this)">Add</button>
+          <button class="cancel-btn" onclick="hideForm(this)">Cancel</button>
+        </div>
+      </div>
+    </div>
+
     <div class="kanban-column">
       <div class="column-header backlog">Backlog</div>
       <div class="kanban-cards"></div>
@@ -645,12 +688,35 @@
     }
 
     // Column Drag and Drop Handlers
+    function getDragAfterElement(container, y) {
+      const draggableElements = [...container.querySelectorAll('.kanban-card:not(.dragging)')];
+
+      return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closest.offset) {
+          return { offset: offset, element: child };
+        } else {
+          return closest;
+        }
+      }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
     document.querySelectorAll('.kanban-column').forEach(column => {
       const cardContainer = column.querySelector('.kanban-cards');
 
       column.addEventListener('dragover', (e) => {
         e.preventDefault();
         column.classList.add('drag-over');
+        const draggingCard = document.querySelector('.dragging');
+        if (draggingCard) {
+          const afterElement = getDragAfterElement(cardContainer, e.clientY);
+          if (afterElement == null) {
+            cardContainer.appendChild(draggingCard);
+          } else {
+            cardContainer.insertBefore(draggingCard, afterElement);
+          }
+        }
       });
 
       column.addEventListener('dragleave', () => {
@@ -665,19 +731,30 @@
           const columnClass = column.querySelector('.column-header').classList[1];
 
           try {
-            const response = await fetch(`/api/cards/${cardId}`, {
+            // 1. Update the card's column first
+            const updateRes = await fetch(`/api/cards/${cardId}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ column: columnClass })
             });
 
-            if (response.ok) {
-              cardContainer.appendChild(draggingCard);
-            } else {
+            if (!updateRes.ok) {
               alert('Failed to update card position.');
+              return;
             }
+
+            // 2. Persist the new order of all cards in this column
+            const allCardsInCol = [...cardContainer.querySelectorAll('.kanban-card')];
+            const order = allCardsInCol.map(card => parseInt(card.getAttribute('data-id')));
+
+            await fetch('/api/cards/reorder', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ column: columnClass, order })
+            });
+
           } catch (err) {
-            console.error('Error updating card:', err);
+            console.error('Error updating card position:', err);
           }
         }
       });

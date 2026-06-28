@@ -88,6 +88,12 @@ try {
   // Column already exists
 }
 
+try {
+  db.exec('ALTER TABLE cards ADD COLUMN position INTEGER DEFAULT 0');
+} catch (e) {
+  // Column already exists
+}
+
 // Seed quotes if empty
 const quotesCount = db.prepare('SELECT count(*) as count FROM quotes').get().count;
 if (quotesCount === 0) {
@@ -219,7 +225,7 @@ app.get('/health', (req, res) => {
 app.get('/api/cards', (req, res) => {
   logger.info('API Request: GET /api/cards');
   try {
-    const cards = db.prepare('SELECT * FROM cards WHERE archived = 0').all();
+    const cards = db.prepare('SELECT * FROM cards WHERE archived = 0 ORDER BY position ASC').all();
     res.json(cards);
   } catch (err) {
     logger.error(`Error in GET /api/cards: ${err}`);
@@ -235,9 +241,11 @@ app.post('/api/cards', (req, res) => {
     return res.status(400).json({ error: 'Title and column are required' });
   }
   try {
-    const info = db.prepare('INSERT INTO cards (title, description, column, color) VALUES (?, ?, ?, ?)')
-                  .run(title, description, column, color || '#757575');
-    res.status(201).json({ id: info.lastInsertRowid, title, description, column, color: color || '#757575' });
+    const maxPos = db.prepare('SELECT MAX(position) as maxPos FROM cards WHERE column = ?').get(column)?.maxPos || 0;
+    const position = maxPos + 1;
+    const info = db.prepare('INSERT INTO cards (title, description, column, color, position) VALUES (?, ?, ?, ?, ?)')
+                  .run(title, description, column, color || '#757575', position);
+    res.status(201).json({ id: info.lastInsertRowid, title, description, column, color: color || '#757575', position });
   } catch (err) {
     logger.error(`Error in POST /api/cards: ${err}`);
     res.status(500).json({ error: 'Failed to save card' });
@@ -248,9 +256,9 @@ app.post('/api/cards', (req, res) => {
 app.put('/api/cards/:id', (req, res) => {
   logger.info(`API Request: PUT /api/cards/${req.params.id} ${JSON.stringify(req.body)}`);
   const { id } = req.params;
-  const { title, description, column, color } = req.body;
+  const { title, description, column, color, position } = req.body;
 
-  if (!title && !column && !description && !color) {
+  if (!title && !column && !description && !color && position === undefined) {
     return res.status(400).json({ error: 'At least one field to update is required' });
   }
 
@@ -262,6 +270,7 @@ app.put('/api/cards/:id', (req, res) => {
     if (description !== undefined) { updates.push('description = ?'); values.push(description); }
     if (column !== undefined) { updates.push('column = ?'); values.push(column); }
     if (color !== undefined) { updates.push('color = ?'); values.push(color); }
+    if (position !== undefined) { updates.push('position = ?'); values.push(position); }
 
     values.push(id);
     const sql = `UPDATE cards SET ${updates.join(', ')} WHERE id = ?`;
@@ -274,6 +283,29 @@ app.put('/api/cards/:id', (req, res) => {
   } catch (err) {
     logger.error(`Error in PUT /api/cards: ${err}`);
     res.status(500).json({ error: 'Failed to update card' });
+  }
+});
+
+// Reorder cards in a column
+app.post('/api/cards/reorder', (req, res) => {
+  logger.info(`API Request: POST /api/cards/reorder ${JSON.stringify(req.body)}`);
+  const { column, order } = req.body;
+  if (!column || !Array.isArray(order)) {
+    return res.status(400).json({ error: 'Column and order array are required' });
+  }
+
+  try {
+    const updatePos = db.prepare('UPDATE cards SET position = ? WHERE id = ?');
+    const transaction = db.transaction((ids) => {
+      ids.forEach((id, index) => {
+        updatePos.run(index, id);
+      });
+    });
+    transaction(order);
+    res.json({ success: true });
+  } catch (err) {
+    logger.error(`Error in POST /api/cards/reorder: ${err}`);
+    res.status(500).json({ error: 'Failed to reorder cards' });
   }
 });
 
