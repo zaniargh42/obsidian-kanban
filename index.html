@@ -52,11 +52,20 @@
 
     .kanban-board {
       display: flex;
+      flex-direction: column;
+      gap: 20px;
+      align-items: center;
+      justify-content: center;
+      overflow-x: auto;
+      padding-bottom: 10px;
+    }
+
+    .main-board {
+      display: flex;
       gap: 20px;
       align-items: flex-start;
       justify-content: center;
       overflow-x: auto;
-      padding-bottom: 10px;
     }
 
     .kanban-column {
@@ -68,6 +77,24 @@
       transition: background-color 0.2s ease;
       display: flex;
       flex-direction: column;
+    }
+
+    .habits-row {
+      width: 100%;
+      max-width: 1200px;
+      min-width: unset;
+    }
+
+    .habits-row .kanban-cards {
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 15px;
+      justify-content: center;
+    }
+
+    .habits-row .kanban-card {
+      width: 260px;
+      flex: 0 1 auto;
     }
 
     .kanban-column:nth-child(1) { background-color: var(--col-bg-1); }
@@ -328,7 +355,7 @@
   </div>
 
   <div class="kanban-board">
-    <div class="kanban-column">
+    <div class="kanban-column habits-row">
       <div class="column-header daily-habits">Daily Habits</div>
       <div class="kanban-cards"></div>
       <button class="add-card-btn" onclick="showForm(this)">＋ Add Card</button>
@@ -350,92 +377,94 @@
       </div>
     </div>
 
-    <div class="kanban-column">
-      <div class="column-header backlog">Backlog</div>
-      <div class="kanban-cards"></div>
-      <button class="add-card-btn" onclick="showForm(this)">＋ Add Card</button>
-      <div class="add-card-form">
-        <input type="text" placeholder="Card Title..." class="card-title-input">
-        <textarea placeholder="Description..." class="card-desc-input"></textarea>
-        <div class="color-picker">
-          <div class="color-option selected" style="background-color: #757575" onclick="selectColor(this, '#757575')"></div>
-          <div class="color-option" style="background-color: #e74c3c" onclick="selectColor(this, '#e74c3c')"></div>
-          <div class="color-option" style="background-color: #3498db" onclick="selectColor(this, '#3498db')"></div>
-          <div class="color-option" style="background-color: #2ecc71" onclick="selectColor(this, '#2ecc71')"></div>
-          <div class="color-option" style="background-color: #f1c40f" onclick="selectColor(this, '#f1c40f')"></div>
-          <div class="color-option" style="background-color: #9b59b6" onclick="selectColor(this, '#9b59b6')"></div>
+    <div class="main-board">
+        <div class="kanban-column">
+          <div class="column-header backlog">Backlog</div>
+          <div class="kanban-cards"></div>
+          <button class="add-card-btn" onclick="showForm(this)">＋ Add Card</button>
+          <div class="add-card-form">
+            <input type="text" placeholder="Card Title..." class="card-title-input">
+            <textarea placeholder="Description..." class="card-desc-input"></textarea>
+            <div class="color-picker">
+              <div class="color-option selected" style="background-color: #757575" onclick="selectColor(this, '#757575')"></div>
+              <div class="color-option" style="background-color: #e74c3c" onclick="selectColor(this, '#e74c3c')"></div>
+              <div class="color-option" style="background-color: #3498db" onclick="selectColor(this, '#3498db')"></div>
+              <div class="color-option" style="background-color: #2ecc71" onclick="selectColor(this, '#2ecc71')"></div>
+              <div class="color-option" style="background-color: #f1c40f" onclick="selectColor(this, '#f1c40f')"></div>
+              <div class="color-option" style="background-color: #9b59b6" onclick="selectColor(this, '#9b59b6')"></div>
+            </div>
+            <div class="form-actions">
+              <button class="save-btn" onclick="addCard(this)">Add</button>
+              <button class="cancel-btn" onclick="hideForm(this)">Cancel</button>
+            </div>
+          </div>
         </div>
-        <div class="form-actions">
-          <button class="save-btn" onclick="addCard(this)">Add</button>
-          <button class="cancel-btn" onclick="hideForm(this)">Cancel</button>
-        </div>
-      </div>
-    </div>
 
-    <div class="kanban-column">
-      <div class="column-header todo">To Do</div>
-      <div class="kanban-cards"></div>
-      <button class="add-card-btn" onclick="showForm(this)">＋ Add Card</button>
-      <div class="add-card-form">
-        <input type="text" placeholder="Card Title..." class="card-title-input">
-        <textarea placeholder="Description..." class="card-desc-input"></textarea>
-        <div class="color-picker">
-          <div class="color-option selected" style="background-color: #757575" onclick="selectColor(this, '#757575')"></div>
-          <div class="color-option" style="background-color: #e74c3c" onclick="selectColor(this, '#e74c3c')"></div>
-          <div class="color-option" style="background-color: #3498db" onclick="selectColor(this, '#3498db')"></div>
-          <div class="color-option" style="background-color: #2ecc71" onclick="selectColor(this, '#2ecc71')"></div>
-          <div class="color-option" style="background-color: #f1c40f" onclick="selectColor(this, '#f1c40f')"></div>
-          <div class="color-option" style="background-color: #9b59b6" onclick="selectColor(this, '#9b59b6')"></div>
+        <div class="kanban-column">
+          <div class="column-header todo">To Do</div>
+          <div class="kanban-cards"></div>
+          <button class="add-card-btn" onclick="showForm(this)">＋ Add Card</button>
+          <div class="add-card-form">
+            <input type="text" placeholder="Card Title..." class="card-title-input">
+            <textarea placeholder="Description..." class="card-desc-input"></textarea>
+            <div class="color-picker">
+              <div class="color-option selected" style="background-color: #757575" onclick="selectColor(this, '#757575')"></div>
+              <div class="color-option" style="background-color: #e74c3c" onclick="selectColor(this, '#e74c3c')"></div>
+              <div class="color-option" style="background-color: #3498db" onclick="selectColor(this, '#3498db')"></div>
+              <div class="color-option" style="background-color: #2ecc71" onclick="selectColor(this, '#2ecc71')"></div>
+              <div class="color-option" style="background-color: #f1c40f" onclick="selectColor(this, '#f1c40f')"></div>
+              <div class="color-option" style="background-color: #9b59b6" onclick="selectColor(this, '#9b59b6')"></div>
+            </div>
+            <div class="form-actions">
+              <button class="save-btn" onclick="addCard(this)">Add</button>
+              <button class="cancel-btn" onclick="hideForm(this)">Cancel</button>
+            </div>
+          </div>
         </div>
-        <div class="form-actions">
-          <button class="save-btn" onclick="addCard(this)">Add</button>
-          <button class="cancel-btn" onclick="hideForm(this)">Cancel</button>
-        </div>
-      </div>
-    </div>
 
-    <div class="kanban-column">
-      <div class="column-header progress">In Progress</div>
-      <div class="kanban-cards"></div>
-      <button class="add-card-btn" onclick="showForm(this)">＋ Add Card</button>
-      <div class="add-card-form">
-        <input type="text" placeholder="Card Title..." class="card-title-input">
-        <textarea placeholder="Description..." class="card-desc-input"></textarea>
-        <div class="color-picker">
-          <div class="color-option selected" style="background-color: #757575" onclick="selectColor(this, '#757575')"></div>
-          <div class="color-option" style="background-color: #e74c3c" onclick="selectColor(this, '#e74c3c')"></div>
-          <div class="color-option" style="background-color: #3498db" onclick="selectColor(this, '#3498db')"></div>
-          <div class="color-option" style="background-color: #2ecc71" onclick="selectColor(this, '#2ecc71')"></div>
-          <div class="color-option" style="background-color: #f1c40f" onclick="selectColor(this, '#f1c40f')"></div>
-          <div class="color-option" style="background-color: #9b59b6" onclick="selectColor(this, '#9b59b6')"></div>
+        <div class="kanban-column">
+          <div class="column-header progress">In Progress</div>
+          <div class="kanban-cards"></div>
+          <button class="add-card-btn" onclick="showForm(this)">＋ Add Card</button>
+          <div class="add-card-form">
+            <input type="text" placeholder="Card Title..." class="card-title-input">
+            <textarea placeholder="Description..." class="card-desc-input"></textarea>
+            <div class="color-picker">
+              <div class="color-option selected" style="background-color: #757575" onclick="selectColor(this, '#757575')"></div>
+              <div class="color-option" style="background-color: #e74c3c" onclick="selectColor(this, '#e74c3c')"></div>
+              <div class="color-option" style="background-color: #3498db" onclick="selectColor(this, '#3498db')"></div>
+              <div class="color-option" style="background-color: #2ecc71" onclick="selectColor(this, '#2ecc71')"></div>
+              <div class="color-option" style="background-color: #f1c40f" onclick="selectColor(this, '#f1c40f')"></div>
+              <div class="color-option" style="background-color: #9b59b6" onclick="selectColor(this, '#9b59b6')"></div>
+            </div>
+            <div class="form-actions">
+              <button class="save-btn" onclick="addCard(this)">Add</button>
+              <button class="cancel-btn" onclick="hideForm(this)">Cancel</button>
+            </div>
+          </div>
         </div>
-        <div class="form-actions">
-          <button class="save-btn" onclick="addCard(this)">Add</button>
-          <button class="cancel-btn" onclick="hideForm(this)">Cancel</button>
-        </div>
-      </div>
-    </div>
 
-    <div class="kanban-column">
-      <div class="column-header done">Done</div>
-      <div class="kanban-cards"></div>
-      <button class="add-card-btn" onclick="showForm(this)">＋ Add Card</button>
-      <div class="add-card-form">
-        <input type="text" placeholder="Card Title..." class="card-title-input">
-        <textarea placeholder="Description..." class="card-desc-input"></textarea>
-        <div class="color-picker">
-          <div class="color-option selected" style="background-color: #757575" onclick="selectColor(this, '#757575')"></div>
-          <div class="color-option" style="background-color: #e74c3c" onclick="selectColor(this, '#e74c3c')"></div>
-          <div class="color-option" style="background-color: #3498db" onclick="selectColor(this, '#3498db')"></div>
-          <div class="color-option" style="background-color: #2ecc71" onclick="selectColor(this, '#2ecc71')"></div>
-          <div class="color-option" style="background-color: #f1c40f" onclick="selectColor(this, '#f1c40f')"></div>
-          <div class="color-option" style="background-color: #9b59b6" onclick="selectColor(this, '#9b59b6')"></div>
+        <div class="kanban-column">
+          <div class="column-header done">Done</div>
+          <div class="kanban-cards"></div>
+          <button class="add-card-btn" onclick="showForm(this)">＋ Add Card</button>
+          <div class="add-card-form">
+            <input type="text" placeholder="Card Title..." class="card-title-input">
+            <textarea placeholder="Description..." class="card-desc-input"></textarea>
+            <div class="color-picker">
+              <div class="color-option selected" style="background-color: #757575" onclick="selectColor(this, '#757575')"></div>
+              <div class="color-option" style="background-color: #e74c3c" onclick="selectColor(this, '#e74c3c')"></div>
+              <div class="color-option" style="background-color: #3498db" onclick="selectColor(this, '#3498db')"></div>
+              <div class="color-option" style="background-color: #2ecc71" onclick="selectColor(this, '#2ecc71')"></div>
+              <div class="color-option" style="background-color: #f1c40f" onclick="selectColor(this, '#f1c40f')"></div>
+              <div class="color-option" style="background-color: #9b59b6" onclick="selectColor(this, '#9b59b6')"></div>
+            </div>
+            <div class="form-actions">
+              <button class="save-btn" onclick="addCard(this)">Add</button>
+              <button class="cancel-btn" onclick="hideForm(this)">Cancel</button>
+            </div>
+          </div>
         </div>
-        <div class="form-actions">
-          <button class="save-btn" onclick="addCard(this)">Add</button>
-          <button class="cancel-btn" onclick="hideForm(this)">Cancel</button>
-        </div>
-      </div>
     </div>
   </div>
 
