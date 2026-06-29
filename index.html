@@ -9,11 +9,11 @@
     :root {
       --bg-color: #1e1e1e;
       --text-color: #dcddde;
-      --col-bg-1: #3a3a3a;
-      --col-bg-2: #323232;
-      --col-bg-3: #2a2a2a;
-      --col-bg-4: #222222;
-      --col-bg-5: #1a1a1a;
+      --col-bg-1: #3e364d;
+      --col-bg-2: #364d4a;
+      --col-bg-3: #36434d;
+      --col-bg-4: #4d4536;
+      --col-bg-5: #364d3b;
       --card-bg: #3e3e3e;
       --card-text: #fff;
       --card-desc: #b3b3b3;
@@ -27,11 +27,11 @@
     .light-mode {
       --bg-color: #f0f2f5;
       --text-color: #1c1e21;
-      --col-bg-1: #f5f5f5;
-      --col-bg-2: #e8e8e8;
-      --col-bg-3: #dcdcdc;
-      --col-bg-4: #d0d0d0;
-      --col-bg-5: #c3c3c3;
+      --col-bg-1: #f3eefc;
+      --col-bg-2: #eef6f6;
+      --col-bg-3: #eef2f6;
+      --col-bg-4: #fefdf3;
+      --col-bg-5: #eef6e8;
       --card-bg: #ffffff;
       --card-text: #050505;
       --card-desc: #65676b;
@@ -509,6 +509,7 @@
         <div class="card-markdown">${marked.parse(card.description || '')}</div>
         <div class="card-actions">
           <button class="action-btn" onclick="event.stopPropagation(); archiveCard(${card.id}, this)">Archive</button>
+          <button class="action-btn" onclick="event.stopPropagation(); moveCard(${card.id}, this)">Move</button>
           <button class="action-btn" onclick="event.stopPropagation(); editCard(${card.id}, this)">Edit</button>
         </div>
       `;
@@ -568,10 +569,116 @@
       `;
     }
 
+    function moveCard(id, btn) {
+      const cardEl = btn.closest('.kanban-card');
+      const currentColumn = cardEl.closest('.kanban-column').querySelector('.column-header').classList[1];
+
+      const columns = [
+        { id: 'daily-habits', name: 'Daily Habits' },
+        { id: 'backlog', name: 'Backlog' },
+        { id: 'todo', name: 'To Do' },
+        { id: 'progress', name: 'In Progress' },
+        { id: 'done', name: 'Done' }
+      ];
+
+      const optionsHtml = columns.map(col =>
+        `<option value="${col.id}" ${col.id === currentColumn ? 'selected' : ''}>${col.name}</option>`
+      ).join('');
+
+      cardEl.innerHTML = `
+        <div class="add-card-form" style="display: flex; margin-top: 0; padding: 0; align-items: center; gap: 10px;">
+          <select class="edit-column-select" style="flex: 1; background-color: var(--input-bg); color: var(--card-text); border: 1px solid var(--input-border); padding: 8px; border-radius: 4px;">
+            ${optionsHtml}
+          </select>
+          <div class="form-actions">
+            <button class="save-btn" onclick="saveMove(${id}, this)">Save</button>
+            <button class="cancel-btn" onclick="cancelMove(${id}, this)">Cancel</button>
+          </div>
+        </div>
+      `;
+    }
+
     function selectEditColor(el, color, id) {
       el.closest('.color-picker').querySelectorAll('.color-option').forEach(opt => opt.classList.remove('selected'));
       el.classList.add('selected');
       el.closest('.kanban-card').setAttribute('data-color', color);
+    }
+
+    async function saveMove(id, btn) {
+      const cardEl = btn.closest('.kanban-card');
+      const newColumn = cardEl.querySelector('.edit-column-select').value;
+
+      try {
+        const response = await fetch(`/api/cards/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ column: newColumn })
+        });
+
+        if (response.ok) {
+          // Move the card in the DOM to the new column
+          const columns = document.querySelectorAll('.kanban-column');
+          let targetColumn = null;
+          columns.forEach(col => {
+            const header = col.querySelector('.column-header');
+            if (header && header.classList.contains(newColumn)) {
+              targetColumn = col;
+            }
+          });
+
+          if (targetColumn) {
+            const container = targetColumn.querySelector('.kanban-cards');
+            container.appendChild(cardEl);
+            // Return to view mode
+            return aRefreshCard(id, cardEl);
+          }
+        } else {
+          alert('Failed to move card.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Server error.');
+      }
+    }
+
+    function cancelMove(id, btn) {
+      const cardEl = btn.closest('.kanban-card');
+      const title = cardEl.getAttribute('data-title');
+      const desc = cardEl.getAttribute('data-description');
+
+      // We need to restore the view mode.
+      // Since we don't have the color easily here without a lookup,
+      // we can just use the aRefreshCard or manually set it.
+      // But easier is to use the data-color attribute.
+      const color = cardEl.getAttribute('data-color');
+
+      cardEl.innerHTML = `
+        <h3>${title}</h3>
+        <div class="card-markdown">${marked.parse(desc || '')}</div>
+        <div class="card-actions">
+          <button class="action-btn" onclick="event.stopPropagation(); archiveCard(${id}, this)">Archive</button>
+          <button class="action-btn" onclick="event.stopPropagation(); moveCard(${id}, this)">Move</button>
+          <button class="action-btn" onclick="event.stopPropagation(); editCard(${id}, this)">Edit</button>
+        </div>
+      `;
+      cardEl.style.borderLeftColor = color;
+    }
+
+    function aRefreshCard(id, cardEl) {
+      const title = cardEl.getAttribute('data-title');
+      const desc = cardEl.getAttribute('data-description');
+      const color = cardEl.getAttribute('data-color');
+
+      cardEl.innerHTML = `
+        <h3>${title}</h3>
+        <div class="card-markdown">${marked.parse(desc || '')}</div>
+        <div class="card-actions">
+          <button class="action-btn" onclick="event.stopPropagation(); archiveCard(${id}, this)">Archive</button>
+          <button class="action-btn" onclick="event.stopPropagation(); moveCard(${id}, this)">Move</button>
+          <button class="action-btn" onclick="event.stopPropagation(); editCard(${id}, this)">Edit</button>
+        </div>
+      `;
+      cardEl.style.borderLeftColor = color;
     }
 
     async function saveEdit(id, btn) {
