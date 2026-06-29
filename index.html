@@ -327,6 +327,106 @@
       margin: 0 0 5px 0;
     }
 
+    /* Habit Tracker Styles */
+    #habit-tracker {
+      width: 100%;
+      max-width: 1200px;
+      background-color: var(--card-bg);
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      margin-bottom: 10px;
+    }
+
+    .habit-tracker-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      gap: 20px;
+    }
+
+    .habit-tracker-header h2 {
+      margin: 0;
+      font-size: 1.2rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-color);
+    }
+
+    .add-habit-form {
+      display: flex;
+      gap: 10px;
+    }
+
+    .add-habit-form input {
+      background-color: var(--input-bg);
+      border: 1px solid var(--input-border);
+      color: var(--card-text);
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+
+    .habit-row {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .habit-name {
+      min-width: 150px;
+      font-weight: 500;
+      color: var(--card-text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .checkbox-grid {
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      padding-bottom: 5px;
+      scrollbar-width: thin;
+    }
+
+    .checkbox-grid input[type="checkbox"] {
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--input-border);
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin: 0;
+    }
+
+    .checkbox-grid input[type="checkbox"]:checked {
+      background-color: #2ecc71;
+      border-color: #2ecc71;
+    }
+
+    .checkbox-grid input[type="checkbox"]:hover {
+      border-color: var(--text-color);
+    }
+
+    .delete-habit-btn {
+      background: none;
+      border: none;
+      color: #ff6b6b;
+      cursor: pointer;
+      font-size: 0.8rem;
+      opacity: 0.6;
+      transition: opacity 0.2s;
+    }
+
+    .delete-habit-btn:hover {
+      opacity: 1;
+    }
+
     @media (max-width: 768px) {
       .kanban-board {
         flex-direction: column;
@@ -355,26 +455,15 @@
   </div>
 
   <div class="kanban-board">
-    <div class="kanban-column habits-row">
-      <div class="column-header daily-habits">Daily Habits</div>
-      <div class="kanban-cards"></div>
-      <button class="add-card-btn" onclick="showForm(this)">＋ Add Card</button>
-      <div class="add-card-form">
-        <input type="text" placeholder="Card Title..." class="card-title-input">
-        <textarea placeholder="Description..." class="card-desc-input"></textarea>
-        <div class="color-picker">
-          <div class="color-option selected" style="background-color: #757575" onclick="selectColor(this, '#757575')"></div>
-          <div class="color-option" style="background-color: #e74c3c" onclick="selectColor(this, '#e74c3c')"></div>
-          <div class="color-option" style="background-color: #3498db" onclick="selectColor(this, '#3498db')"></div>
-          <div class="color-option" style="background-color: #2ecc71" onclick="selectColor(this, '#2ecc71')"></div>
-          <div class="color-option" style="background-color: #f1c40f" onclick="selectColor(this, '#f1c40f')"></div>
-          <div class="color-option" style="background-color: #9b59b6" onclick="selectColor(this, '#9b59b6')"></div>
-        </div>
-        <div class="form-actions">
-          <button class="save-btn" onclick="addCard(this)">Add</button>
-          <button class="cancel-btn" onclick="hideForm(this)">Cancel</button>
+    <div id="habit-tracker">
+      <div class="habit-tracker-header">
+        <h2>Habit Tracker</h2>
+        <div class="add-habit-form">
+          <input type="text" id="habit-name-input" placeholder="Enter habit name...">
+          <button class="save-btn" onclick="addHabit()">Add Habit</button>
         </div>
       </div>
+      <div id="habits-list"></div>
     </div>
 
     <div class="main-board">
@@ -908,7 +997,109 @@
       }
       loadCards();
       loadQuote();
+      loadHabits();
     });
+
+    // Habit Tracker Functions
+    async function loadHabits() {
+      try {
+        const response = await fetch('/api/habits');
+        const habits = await response.json();
+        const list = document.getElementById('habits-list');
+        list.innerHTML = '';
+
+        habits.forEach(habit => renderHabit(habit));
+      } catch (err) {
+        console.error('Error loading habits:', err);
+      }
+    }
+
+    function renderHabit(habit) {
+      const progress = JSON.parse(habit.progress);
+      const list = document.getElementById('habits-list');
+
+      const row = document.createElement('div');
+      row.className = 'habit-row';
+      row.setAttribute('data-id', habit.id);
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'habit-name';
+      nameEl.textContent = habit.name;
+
+      const grid = document.createElement('div');
+      grid.className = 'checkbox-grid';
+
+      progress.forEach((checked, index) => {
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = checked;
+        checkbox.onchange = () => toggleHabit(habit.id, index);
+        grid.appendChild(checkbox);
+      });
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'delete-habit-btn';
+      delBtn.textContent = 'Delete';
+      delBtn.onclick = () => deleteHabit(habit.id);
+
+      row.appendChild(nameEl);
+      row.appendChild(grid);
+      row.appendChild(delBtn);
+      list.appendChild(row);
+    }
+
+    async function addHabit() {
+      const input = document.getElementById('habit-name-input');
+      const name = input.value.trim();
+      if (!name) return alert('Please enter a habit name.');
+
+      try {
+        const response = await fetch('/api/habits', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+
+        if (response.ok) {
+          input.value = '';
+          loadHabits();
+        } else {
+          alert('Failed to add habit.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Server error.');
+      }
+    }
+
+    async function toggleHabit(id, index) {
+      try {
+        const response = await fetch(`/api/habits/${id}/toggle`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ index })
+        });
+        if (!response.ok) alert('Failed to update habit.');
+      } catch (err) {
+        console.error(err);
+        alert('Server error.');
+      }
+    }
+
+    async function deleteHabit(id) {
+      if (!confirm('Delete this habit?')) return;
+      try {
+        const response = await fetch(`/api/habits/${id}`, { method: 'DELETE' });
+        if (response.ok) {
+          loadHabits();
+        } else {
+          alert('Failed to delete habit.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Server error.');
+      }
+    }
   </script>
 
 </body>

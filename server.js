@@ -73,6 +73,11 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     text TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS habits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    progress TEXT NOT NULL
+  );
 `);
 
 // Migrations for new features
@@ -337,6 +342,74 @@ app.delete('/api/cards/:id', (req, res) => {
   } catch (err) {
     logger.error(`Error in DELETE /api/cards/${id}: ${err}`);
     res.status(500).json({ error: 'Failed to delete card' });
+  }
+});
+
+// Habit Tracker Endpoints
+
+app.get('/api/habits', (req, res) => {
+  logger.info('API Request: GET /api/habits');
+  try {
+    const habits = db.prepare('SELECT * FROM habits').all();
+    res.json(habits);
+  } catch (err) {
+    logger.error(`Error in GET /api/habits: ${err}`);
+    res.status(500).json({ error: 'Failed to fetch habits' });
+  }
+});
+
+app.post('/api/habits', (req, res) => {
+  logger.info(`API Request: POST /api/habits ${JSON.stringify(req.body)}`);
+  const { name } = req.body;
+  if (!name) {
+    return res.status(400).json({ error: 'Habit name is required' });
+  }
+  try {
+    const progress = JSON.stringify(new Array(100).fill(false));
+    const info = db.prepare('INSERT INTO habits (name, progress) VALUES (?, ?)')
+                  .run(name, progress);
+    res.status(201).json({ id: info.lastInsertRowid, name, progress });
+  } catch (err) {
+    logger.error(`Error in POST /api/habits: ${err}`);
+    res.status(500).json({ error: 'Failed to create habit' });
+  }
+});
+
+app.patch('/api/habits/:id/toggle', (req, res) => {
+  const { id } = req.params;
+  const { index } = req.body;
+  if (index === undefined || index < 0 || index >= 100) {
+    return res.status(400).json({ error: 'Valid index between 0-99 is required' });
+  }
+
+  try {
+    const habit = db.prepare('SELECT * FROM habits WHERE id = ?').get(id);
+    if (!habit) return res.status(404).json({ error: 'Habit not found' });
+
+    const progress = JSON.parse(habit.progress);
+    progress[index] = !progress[index];
+
+    db.prepare('UPDATE habits SET progress = ? WHERE id = ?')
+      .run(JSON.stringify(progress), id);
+
+    res.json({ success: true, progress });
+  } catch (err) {
+    logger.error(`Error in PATCH /api/habits/${id}/toggle: ${err}`);
+    res.status(500).json({ error: 'Failed to update habit progress' });
+  }
+});
+
+app.delete('/api/habits/:id', (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = db.prepare('DELETE FROM habits WHERE id = ?').run(id);
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Habit not found' });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    logger.error(`Error in DELETE /api/habits/${id}: ${err}`);
+    res.status(500).json({ error: 'Failed to delete habit' });
   }
 });
 
